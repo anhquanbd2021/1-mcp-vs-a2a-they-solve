@@ -1,0 +1,16 @@
+{
+  "name": "mcp-vs-a2a-layers-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Protocol Layers Lab — run one incident task down a toy agent stack and read failures by layer: A2A delegation hops vs. MCP tool hops.",
+  "scripts": {
+    "start": "node app/server.js",
+    "report": "node scripts/report.mjs",
+    "test": "node --test \"test/*.test.mjs\"",
+    "check": "npm test && npm run report"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How the Protocol Layers Lab models A2A delegation hops vs. MCP tool hops — and what the simulation does not prove.">
+  <title>Protocol Layers Lab — guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap&subset=vietnamese" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+<!-- pb-shell --><link rel="stylesheet" href="./pb-shell.css"><!-- pb-shell --><!-- pb-back --><link rel="stylesheet" href="./pb-back.css"><!-- pb-back --></head>
+<body>
+<main>
+  <nav aria-label="Primary"><a href="/">Lab</a><a aria-current="page" href="/guide.html">Guide</a><a href="https://github.com/anhquanbd2021/1-mcp-vs-a2a-they-solve">Source</a></nav>
+  <header class="hero">
+    <div><p class="eyebrow">Guide</p><h1>How the lab reads a hop.</h1><p class="lede">The lab simulates one incident task — <em>why did checkout p95 latency spike at 14:00?</em> — moving through a toy agent stack. Every hop is tagged by the boundary it crosses, so each failure reads as a layer problem, not "the agent protocol broke."</p></div>
+  </header>
+
+  <section class="panel guide-section">
+    <h2>The two boundaries</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>layer</th><th>boundary</th><th>ops in this lab</th><th>what it standardizes</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge a2a">a2a</span></td><td>agent ↔ agent — the seam</td><td><code>agents/discover</code> (agent cards), <code>tasks/send</code>, <code>tasks/result</code></td><td>Who can take work: skills, task lifecycle (submitted → working → completed/failed), artifacts coming back across a trust boundary.</td></tr>
+        <tr><td><span class="badge mcp">mcp</span></td><td>agent ↔ tool — the edge</td><td><code>tools/list</code>, <code>tools/call</code></td><td>What an agent can use: tool discovery, input schemas, invocation. The model stays in control — the protocol is a socket, not a manager.</td></tr>
+        <tr><td><span class="badge task">task</span></td><td>lifecycle events</td><td><code>task.submit</code>, <code>state</code>, <code>tasks/aggregate</code></td><td>Not a protocol — the run bookkeeping so the trace reads top to bottom.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel guide-section">
+    <h2>The three failures — one per concept</h2>
+    <ul>
+      <li><strong>dead MCP server</strong> (<code>metrics-db</code> down): the <code>tools/list</code> call never answers, so <code>tools/call</code> never fires. The A2A hops all succeed — the coordination layer held; the capability vanished. Verdict: <code>degraded</code>.</li>
+      <li><strong>delegation loop</strong>: the metrics specialist can't map its subtask and delegates back to the orchestrator — which is already in the task's <code>delegationPath</code>. The router refuses the cycle with <code>DELEGATION_LOOP</code>. No MCP hop ever runs for that agent. Verdict: <code>failed</code>.</li>
+      <li><strong>thin handoff</strong>: the A2A hop is healthy — the task is delivered — but the packet arrives without <code>service</code>/<code>window</code>. The specialist's <code>tools/call</code> goes out missing required arguments and the schema rejects it with <code>INSUFFICIENT_CONTEXT</code>. A content failure riding a healthy delegation. Verdict: <code>degraded</code>.</li>
+    </ul>
+  </section>
+
+  <section class="panel guide-section">
+    <h2>Reading the trace</h2>
+    <ul>
+      <li><strong>Count failures by layer, not in total.</strong> A run with two failed <span class="badge mcp">mcp</span> hops and clean <span class="badge a2a">a2a</span> hops is a tool problem with healthy coordination — fix the server, not the topology.</li>
+      <li><strong>A failed <code>tasks/send</code> is an A2A-leg problem</strong> — the work never reached a tool edge. In this lab that only happens via <code>DELEGATION_LOOP</code>.</li>
+      <li><strong>A failed <code>tools/call</code> with reachable discovery</strong> is a content problem — the protocol delivered a task that carried too little.</li>
+    </ul>
+  </section>
+
+  <section class="panel guide-section">
+    <h2>Honest limits</h2>
+    <ul>
+      <li><strong>Shapes, not wire formats.</strong> Ops are named and sequenced like real MCP (<code>tools/list</code>, <code>tools/call</code>, JSON-schema-shaped inputs) and A2A (agent cards, task lifecycle) calls, but nothing here speaks JSON-RPC or HTTP. Do not point a real client at it.</li>
+      <li>No model is ever called — the specialists' "reasoning" is a fixture that maps subtasks to tools.</li>
+      <li>Real A2A deployments add authentication between agent boundaries, streaming task updates, and long-running task states this lab compresses to a synchronous ladder.</li>
+      <li>Real MCP adds resources/prompts, transport negotiation (stdio vs. HTTP), and roots/elicitation — none modeled here.</li>
+      <li>One scenario, two specialists, one tool each. The point is the boundary, not the topology.</li>
+    </ul>
+    <p>This is an educational demo, not production infrastructure.</p>
+  </section>
+</main>
+<!-- pb-shell --><a class="pb-shell" href="https://github.com/anhquanbd2021/1-mcp-vs-a2a-they-solve" title="1-mcp-vs-a2a-they-solve — an Article Playbook demo (view source)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="2" width="9" height="9" rx="2" fill="#2dd4bf"/><rect x="13" y="2" width="9" height="9" rx="2" fill="#2dd4bf" opacity=".45"/><rect x="2" y="13" width="9" height="9" rx="2" fill="#2dd4bf" opacity=".45"/><rect x="13" y="13" width="9" height="9" rx="4.5" fill="#2dd4bf"/></svg><b>1-mcp-vs-a2a-they-solve</b><i>DEMO</i></a><!-- pb-shell --><!-- pb-back --><a class="pb-back" id="pb-back" href="https://github.com/anhquanbd2021/1-mcp-vs-a2a-they-solve" title="Back to the article — 1-mcp-vs-a2a-they-solve">← Article <i>PLAYBOOK</i></a><script>(function(){var a=document.getElementById('pb-back');if(!a)return;var h=location.hostname;if(/^(localhost|127\.0\.0\.1|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(h)){a.href='//'+h+':'+(/^(localhost|127\.0\.0\.1)$/.test(h)?'1234':'30082')+'/microsites/article.html?slug=1-mcp-vs-a2a-they-solve';}})();</script><!-- pb-back --></body>
+</html>

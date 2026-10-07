@@ -1,0 +1,62 @@
+{
+  "name": "checkout-latency-incident",
+  "task": {
+    "id": "T-0142",
+    "goal": "Why did checkout p95 latency spike at 14:00?",
+    "context": {
+      "service": "checkout",
+      "window": "14:00-14:30",
+      "metric": "p95_latency_ms"
+    }
+  },
+  "orchestrator": {
+    "id": "ops-orchestrator",
+    "maxDelegationDepth": 3
+  },
+  "agents": [
+    {
+      "id": "metrics-agent",
+      "name": "Metrics Specialist",
+      "skills": ["query time-series metrics", "detect anomalies in a window"],
+      "subtask": "Pull p95 latency for the target service in the incident window and flag the anomaly.",
+      "server": "metrics-db",
+      "tool": "query_metrics",
+      "toolArgs": { "service": "checkout", "metric": "p95_latency_ms", "window": "14:00-14:30" },
+      "artifact": "p95 jumped 180ms -> 940ms at 14:07, still elevated at 14:30"
+    },
+    {
+      "id": "logs-agent",
+      "name": "Logs Specialist",
+      "skills": ["search structured logs", "correlate errors with a window"],
+      "subtask": "Search error logs for the target service inside the incident window.",
+      "server": "log-store",
+      "tool": "search_logs",
+      "toolArgs": { "service": "checkout", "level": "error", "window": "14:00-14:30" },
+      "artifact": "db-connection-timeout bursts begin 14:06, 41 hits in window"
+    }
+  ],
+  "mcpServers": [
+    {
+      "id": "metrics-db",
+      "name": "metrics-db MCP server",
+      "tools": [
+        {
+          "name": "query_metrics",
+          "description": "Query a time-series metric for a service over a window.",
+          "inputSchema": { "required": ["service", "metric", "window"] }
+        }
+      ]
+    },
+    {
+      "id": "log-store",
+      "name": "log-store MCP server",
+      "tools": [
+        {
+          "name": "search_logs",
+          "description": "Search structured logs by service, level, and window.",
+          "inputSchema": { "required": ["service", "level", "window"] }
+        }
+      ]
+    }
+  ]
+}
